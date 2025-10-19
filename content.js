@@ -285,8 +285,15 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
             <div style="font-weight: bold; font-size: 1.05rem; color: #333; margin-bottom: 8px;">页面描述预览</div>
             <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
               <div>
-                <div style="font-weight: 600; color:#666; margin-bottom:6px;">HTML</div>
-                <div id="ozon-desc-html-view" style="max-height: 160px; overflow: auto; border: 1px dashed #ddd; padding: 10px; border-radius: 8px; background: #fafafa;"></div>
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:6px;">
+                  <div style="font-weight: 600; color:#666;">HTML</div>
+                  <div>
+                    <button id="ozon-html-edit-btn" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-size:12px;">编辑</button>
+                    <button id="ozon-html-preview-btn" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-size:12px; margin-left:6px;">预览</button>
+                  </div>
+                </div>
+                <textarea id="ozon-desc-html-editor" style="width:100%; height: 160px; padding:10px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; font-family: monospace; font-size: 12px; display:block;"></textarea>
+                <div id="ozon-desc-html-view" style="display:none; max-height: 200px; overflow: auto; border: 1px dashed #ddd; padding: 10px; border-radius: 8px; background: #fafafa; margin-top:8px;"></div>
               </div>
               <div>
                 <div style="font-weight: 600; color:#666; margin-bottom:6px;">JSON 富内容</div>
