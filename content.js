@@ -261,9 +261,10 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
         <div id="ozon-attribute-list" style="display:grid; grid-template-columns: 1fr; gap: 16px;">
           <div style="background: #f9f9ff; border-radius: 10px; padding: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
             <div style="font-weight: bold; font-size: 1.05rem; color: #333;">图片链接</div>
-            <div style="font-size: 0.95rem; color: #e52e71; margin-top: 6px;">可填写多个链接，按逗号分隔</div>
+            <div style="font-size: 0.95rem; color: #e52e71; margin-top: 6px;">可填写多个链接，按逗号或换行分隔</div>
             <textarea style="width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem; margin-top: 10px;" 
-                      placeholder="请输入图片链接，多个用逗号分隔" data-id="888">${imageUrls}</textarea>
+                      placeholder="请输入图片链接，多个用逗号或换行分隔" data-id="888">${imageUrls}</textarea>
+            <div id="ozon-image-preview" style="margin-top:10px; display:grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;"></div>
           </div>
 
           <!-- 基础信息与价格 -->
@@ -319,6 +320,34 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
         const jsonPreview = document.getElementById('ozon-desc-json-view');
         if (jsonPreview && descJson) {
             jsonPreview.value = descJson;
+        }
+        // 渲染图片预览
+        const imagePreview = document.getElementById('ozon-image-preview');
+        const imageTextarea = document.querySelector('textarea[data-id="888"]');
+        const renderPreviews = (raw) => {
+            if (!imagePreview) return;
+            const urls = (raw || '')
+              .split(/\n|,/)
+              .map(v => v.trim())
+              .filter(v => v);
+            imagePreview.innerHTML = urls.map(src => (
+              `<div style="position:relative; border:1px solid #eee; border-radius:8px; overflow:hidden; background:#fff;">
+                 <img src="${src}" style="width:100%; height:80px; object-fit:cover; display:block;" referrerpolicy="no-referrer" />
+                 <div title="复制链接" data-src="${src}" style="position:absolute; right:6px; top:6px; background:rgba(0,0,0,0.55); color:#fff; font-size:12px; padding:2px 6px; border-radius:6px; cursor:pointer;">复制</div>
+               </div>`
+            )).join('');
+            // 绑定复制
+            imagePreview.querySelectorAll('[data-src]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const link = e.currentTarget.getAttribute('data-src');
+                    if (!link) return;
+                    navigator.clipboard.writeText(link).catch(() => {});
+                });
+            });
+        };
+        if (imageTextarea) {
+            renderPreviews(imageTextarea.value || (Array.isArray(imageUrls) ? imageUrls.join(',') : imageUrls || ''));
+            imageTextarea.addEventListener('input', (e) => renderPreviews(e.target.value));
         }
     } catch (e) {
         // 忽略预览填充异常
