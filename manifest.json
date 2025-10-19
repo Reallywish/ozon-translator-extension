@@ -1,0 +1,39 @@
+{
+  "manifest_version": 3,
+  "name": "Ozon商品属性翻译插件",
+  "version": "1.0",
+  "description": "获取Ozon商品属性并填写翻译内容",
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://api-seller.ozon.ru/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.ozon.ru/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://www.wildberries.ru/*"
+      ],
+      "js": [
+        "wbGet.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
