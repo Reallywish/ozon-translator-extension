@@ -230,71 +230,62 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
     // console.log(data)
     const type_id = data.type_id
     const description_category_id = data.description_category_id
-    // 创建模态框
+    // 创建可拖动的悬浮面板（非模态）
     const modal = document.createElement('div');
     modal.id = 'ozon-attribute-modal';
     modal.style.cssText = `
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0,0,0,0.7);
-          z-index: 10000;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        `;
+      position: fixed;
+      top: 60px;
+      left: 60px;
+      z-index: 10000;
+      width: 90%;
+      max-width: 800px;
+      max-height: 85vh;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      overflow: hidden;
+    `;
 
     modal.innerHTML = `
-  <div style="background: white; border-radius: 15px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #eee;">
-      <h2 style="color: #1a2a6c; font-size: 1.8rem;">商品属性补全</h2>
-      <button id="ozon-close-modal" style="background: none; border: none; font-size: 2rem; cursor: pointer; color: #888;">&times;</button>
+    <div id="ozon-modal-header" style="display:flex; align-items:center; justify-content: space-between; padding: 12px 16px; background:#1a2a6c; color:#fff; cursor: move;">
+      <h2 style="margin:0; font-size: 1.2rem;">商品属性补全</h2>
+      <button id="ozon-close-modal" style="background: none; border: none; font-size: 1.6rem; cursor: pointer; color: #fff;">&times;</button>
     </div>
 
-    <div id="ozon-attribute-list" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
+    <div style="padding: 20px; overflow: auto; max-height: calc(85vh - 60px);">
+      <div id="ozon-attribute-list" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
 
-      <!-- 视频链接 -->
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
-        <div style="font-weight: bold; font-size: 1.2rem; color: #333;">图片链接</div>
-        <div style="font-size: 1.1rem; color: #e52e71; margin-top: 5px;">可填写多个链接，按逗号分隔</div>
-        <textarea style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 10px;" 
-                  placeholder="请输入视频链接，一行一个" data-id="888">${imageUrls}</textarea>
+        <!-- 图片链接与缩略图管理 -->
+        <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+          <div style="font-weight: bold; font-size: 1.2rem; color: #333;">图片链接</div>
+          <div style="font-size: 1.1rem; color: #e52e71; margin-top: 5px;">可填写多个链接，按逗号分隔</div>
+          <textarea style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 10px;"
+                    placeholder="请输入图片链接，逗号分隔或一行一个" data-id="888">${imageUrls}</textarea>
+          <div id="ozon-image-thumbs" style="margin-top: 12px; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;"></div>
+        </div>
+
+        <!-- 长宽高重量等信息（保持不变） -->
+        <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+          <input type="number" placeholder="长度 (mm)" data-id="depth" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+          <input type="number" placeholder="宽度 (mm)" data-id="width" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+          <input type="number" placeholder="高度 (mm)" data-id="height" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+          <input type="number" placeholder="重量 (g)" data-id="weight" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+          <input id="offerInput" type="text" placeholder="货号" data-id="offer_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
+          
+          <input type="number" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value=188>
+          <input type="number" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="111">
+          <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${type_id}">
+          <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${description_category_id}">
+        </div>
       </div>
 
-      <!-- 长宽高重量 -->
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-        <input type="number" placeholder="长度 (mm)" data-id="depth" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="宽度 (mm)" data-id="width" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="高度 (mm)" data-id="height" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="重量 (g)" data-id="weight" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input id="offerInput" type="text" placeholder="货号" data-id="offer_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-      <!-- </div>
-
-      type_id 和 description_category_id 价格以及折扣前价格
-       <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-      
-        <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${description_category_id}">
-        <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${type_id}">
-        <input type="text" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="text" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">-->
-        
-        <input type="number" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value=188>
-        <input type="number" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="111">
-        <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${type_id}">
-        <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${description_category_id}">
+      <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
+        <button id="ozon-cancel-btn" style="padding: 12px 25px; background: #f0f0f0; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">取消</button>
+        <button id="ozon-submit-btn" style="padding: 12px 25px; background: linear-gradient(45deg, #1a2a6c, #2a5298); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">确定</button>
       </div>
-
     </div>
-
-    <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
-      <button id="ozon-cancel-btn" style="padding: 12px 25px; background: #f0f0f0; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">取消</button>
-      <button id="ozon-submit-btn" style="padding: 12px 25px; background: linear-gradient(45deg, #1a2a6c, #2a5298); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">确定</button>
-    </div>
-  </div>
-`;
+    `;
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
@@ -304,6 +295,96 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
     });
 
     document.body.appendChild(modal);
+    
+    // 初始化可拖动行为
+    (function makeDraggable() {
+        const header = modal.querySelector('#ozon-modal-header');
+        if (!header) return;
+        let isDragging = false;
+        let offsetX = 0;
+        let offsetY = 0;
+        const onMouseDown = (e) => {
+            isDragging = true;
+            const rect = modal.getBoundingClientRect();
+            offsetX = e.clientX - rect.left;
+            offsetY = e.clientY - rect.top;
+            modal.style.userSelect = 'none';
+            document.body.style.userSelect = 'none';
+        };
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            const newLeft = Math.min(Math.max(0, e.clientX - offsetX), window.innerWidth - modal.offsetWidth);
+            const newTop = Math.min(Math.max(0, e.clientY - offsetY), window.innerHeight - modal.offsetHeight);
+            modal.style.left = `${newLeft}px`;
+            modal.style.top = `${newTop}px`;
+            modal.style.right = 'auto';
+            modal.style.bottom = 'auto';
+        };
+        const onMouseUp = () => {
+            isDragging = false;
+            modal.style.userSelect = '';
+            document.body.style.userSelect = '';
+        };
+        header.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    })();
+
+    // 图片缩略图渲染与复制/删除
+    (function setupImageThumbs() {
+        const imageTextarea = modal.querySelector('textarea[data-id="888"]');
+        const thumbsContainer = modal.querySelector('#ozon-image-thumbs');
+        if (!imageTextarea || !thumbsContainer) return;
+
+        const parseUrls = (text) => {
+            return text
+                .split(/[,\n]/)
+                .map(s => s.trim())
+                .filter(Boolean);
+        };
+
+        const writeUrls = (urls) => {
+            imageTextarea.value = urls.join(',');
+        };
+
+        const render = () => {
+            const urls = parseUrls(imageTextarea.value);
+            if (urls.length === 0) {
+                thumbsContainer.innerHTML = '<div style="color:#888;">暂无图片链接</div>';
+                return;
+            }
+            thumbsContainer.innerHTML = urls.map(url => `
+              <div style="border:1px solid #eee; border-radius:8px; padding:8px; background:#fff; display:flex; flex-direction:column; gap:8px;">
+                <div style="width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:6px; background:#f7f7f7; display:flex; align-items:center; justify-content:center;">
+                  <img src="${url}" alt="thumb" style="max-width:100%; max-height:100%; object-fit:contain;"/>
+                </div>
+                <div style="display:flex; gap:8px;">
+                  <button data-act="copy" data-url="${url}" style="flex:1; padding:6px 8px; border:1px solid #d0d0d0; background:#fafafa; border-radius:6px; cursor:pointer;">复制</button>
+                  <button data-act="delete" data-url="${url}" style="flex:1; padding:6px 8px; border:1px solid #ffcccc; background:#ffecec; color:#d60000; border-radius:6px; cursor:pointer;">删除</button>
+                </div>
+              </div>
+            `).join('');
+        };
+
+        thumbsContainer.addEventListener('click', async (e) => {
+            const target = e.target;
+            if (!(target instanceof HTMLElement)) return;
+            const action = target.getAttribute('data-act');
+            const url = target.getAttribute('data-url');
+            if (!action || !url) return;
+            const urls = parseUrls(imageTextarea.value);
+            if (action === 'copy') {
+                try { await navigator.clipboard.writeText(url); } catch (_) {}
+            } else if (action === 'delete') {
+                const next = urls.filter(u => u !== url);
+                writeUrls(next);
+                render();
+            }
+        });
+
+        imageTextarea.addEventListener('input', render);
+        render();
+    })();
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase(); // 生成4位字母数字组合
     document.getElementById("offerInput").value = `${sku}-${randomSuffix}`;
 
@@ -433,7 +514,7 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
         }
     });
 
-    // 关闭模态框
+    // 关闭面板
     document.getElementById('ozon-close-modal').addEventListener('click', () => {
         document.body.removeChild(modal);
     });
