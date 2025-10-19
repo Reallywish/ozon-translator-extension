@@ -442,7 +442,7 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
   <div style="color: #666; margin: 10px 0; line-height: 1.5;">${attr.description}</div>
   <div style="color: #666; margin: 10px 0; line-height: 1.5;">${attr.description_zh}</div>
   <select multiple 
-          style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 10px; height: 120px;" 
+          style="width: 100%; padding: 10px 12px; border: 2px solid #aab4d4; border-radius: 10px; font-size: 1rem; margin-top: 8px; height: 180px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.04);" 
           data-id="${attr.id}">
     ${(() => {
                 const selectedValues = (characteristics[attr.name] && characteristics[attr.name].length > 0) ? characteristics[attr.name] : (characteristics['Цвет'] || '');
@@ -508,6 +508,45 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
             attributeList.appendChild(attributeItem);
         }
     });
+
+    // 增强所有多选下拉框：添加可搜索输入并优化样式
+    (function enhanceMultiSelects() {
+        const multiSelects = modal.querySelectorAll('select[multiple]');
+        multiSelects.forEach((selectEl) => {
+            // 搜索输入框
+            const searchInput = document.createElement('input');
+            searchInput.type = 'text';
+            searchInput.placeholder = '输入以搜索';
+            searchInput.style.cssText = 'width:100%; box-sizing:border-box; margin-top:8px; margin-bottom:8px; padding:8px 12px; border:2px solid #aab4d4; border-radius:8px; font-size:0.95rem;';
+
+            // 将搜索框插入到 select 前
+            selectEl.parentNode.insertBefore(searchInput, selectEl);
+
+            // 缓存所有选项
+            const allOptions = Array.from(selectEl.options).map(o => ({
+                id: o.getAttribute('id') || '',
+                value: o.value || '',
+                text: (o.textContent || '').trim(),
+            }));
+
+            const normalize = (s) => (s || '').toLowerCase();
+
+            const renderOptions = (term) => {
+                const selectedIds = new Set(Array.from(selectEl.options).filter(o => o.selected).map(o => o.getAttribute('id') || ''));
+                const matched = term ? allOptions.filter(opt => normalize(opt.text).includes(term) || normalize(opt.value).includes(term)) : allOptions;
+                // 保证已选项始终可见
+                const selectedList = allOptions.filter(opt => selectedIds.has(opt.id));
+                const unionMap = new Map();
+                [...selectedList, ...matched].forEach(opt => unionMap.set(opt.id + '|' + opt.value, opt));
+                const finalList = Array.from(unionMap.values());
+                selectEl.innerHTML = finalList.map(opt => `<option id="${opt.id}" value="${opt.value}" ${selectedIds.has(opt.id) ? 'selected' : ''}>${opt.value}</option>`).join('');
+            };
+
+            searchInput.addEventListener('input', () => {
+                renderOptions(normalize(searchInput.value));
+            });
+        });
+    })();
 
     // 关闭面板
     document.getElementById('ozon-close-modal').addEventListener('click', () => {
