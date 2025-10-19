@@ -225,85 +225,104 @@ function addDownImageButton() {
 //     }
 // });
 
-// 显示属性对话框
+// 显示属性面板（非模态，允许同时操作原网页与面板）
 function showAttributesModal(data, characteristics, imageUrls, descJson, descHtml, keywordRes, sku, clientId, apiKey) {
     // console.log(data)
     const type_id = data.type_id
     const description_category_id = data.description_category_id
-    // 创建模态框
+    // 如果已有面板，先移除，避免重复
+    const existingPanel = document.getElementById('ozon-attribute-modal');
+    if (existingPanel) existingPanel.remove();
+
+    // 创建侧边面板（非遮罩）
     const modal = document.createElement('div');
     modal.id = 'ozon-attribute-modal';
     modal.style.cssText = `
           position: fixed;
           top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0,0,0,0.7);
+          right: 0;
+          width: 480px;
+          max-width: 90vw;
+          height: 100vh;
+          background: #ffffff;
           z-index: 10000;
           display: flex;
-          align-items: center;
-          justify-content: center;
+          flex-direction: column;
+          box-shadow: -6px 0 24px rgba(0,0,0,0.15);
+          border-left: 1px solid #e9e9ef;
         `;
 
     modal.innerHTML = `
-  <div style="background: white; border-radius: 15px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid #eee;">
-      <h2 style="color: #1a2a6c; font-size: 1.8rem;">商品属性补全</h2>
-      <button id="ozon-close-modal" style="background: none; border: none; font-size: 2rem; cursor: pointer; color: #888;">&times;</button>
-    </div>
-
-    <div id="ozon-attribute-list" style="display: grid; grid-template-columns: 1fr; gap: 20px;">
-
-      <!-- 视频链接 -->
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
-        <div style="font-weight: bold; font-size: 1.2rem; color: #333;">图片链接</div>
-        <div style="font-size: 1.1rem; color: #e52e71; margin-top: 5px;">可填写多个链接，按逗号分隔</div>
-        <textarea style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 10px;" 
-                  placeholder="请输入视频链接，一行一个" data-id="888">${imageUrls}</textarea>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding: 14px 16px; border-bottom: 1px solid #eee;">
+        <h2 style="margin: 0; color: #1a2a6c; font-size: 1.2rem;">商品属性补全</h2>
+        <button id="ozon-close-modal" style="background: none; border: none; font-size: 1.6rem; cursor: pointer; color: #888; line-height: 1;">&times;</button>
       </div>
+      <div id="ozon-panel-content" style="flex:1; overflow-y:auto; padding: 14px 16px;">
+        <div id="ozon-attribute-list" style="display:grid; grid-template-columns: 1fr; gap: 16px;">
+          <div style="background: #f9f9ff; border-radius: 10px; padding: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.08);">
+            <div style="font-weight: bold; font-size: 1.05rem; color: #333;">图片链接</div>
+            <div style="font-size: 0.95rem; color: #e52e71; margin-top: 6px;">可填写多个链接，按逗号分隔</div>
+            <textarea style="width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem; margin-top: 10px;" 
+                      placeholder="请输入图片链接，多个用逗号分隔" data-id="888">${imageUrls}</textarea>
+          </div>
 
-      <!-- 长宽高重量 -->
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-        <input type="number" placeholder="长度 (mm)" data-id="depth" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="宽度 (mm)" data-id="width" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="高度 (mm)" data-id="height" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="number" placeholder="重量 (g)" data-id="weight" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input id="offerInput" type="text" placeholder="货号" data-id="offer_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-      <!-- </div>
+          <!-- 基础信息与价格 -->
+          <div style="background: #f9f9ff; border-radius: 10px; padding: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+            <input type="number" placeholder="长度 (mm)" data-id="depth" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+            <input type="number" placeholder="宽度 (mm)" data-id="width" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+            <input type="number" placeholder="高度 (mm)" data-id="height" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+            <input type="number" placeholder="重量 (g)" data-id="weight" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+            <input id="offerInput" type="text" placeholder="货号" data-id="offer_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;">
+            <input type="number" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;" value=188>
+            <input type="number" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;" value="111">
+            <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;" value="${type_id}">
+            <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 0.95rem;" value="${description_category_id}">
+          </div>
 
-      type_id 和 description_category_id 价格以及折扣前价格
-       <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-      <div style="background: #f9f9ff; border-radius: 10px; padding: 20px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-      
-        <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${description_category_id}">
-        <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${type_id}">
-        <input type="text" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">
-        <input type="text" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;">-->
-        
-        <input type="number" placeholder="old_price" data-id="old_price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value=188>
-        <input type="number" placeholder="price" data-id="price" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="111">
-        <input type="text" placeholder="type_id" data-id="type_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${type_id}">
-        <input type="text" placeholder="description_category_id" data-id="description_category_id" style="padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;" value="${description_category_id}">
+          <!-- 页面描述预览（HTML / JSON） -->
+          <div style="background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 3px 10px rgba(0,0,0,0.06); border: 1px solid #eee;">
+            <div style="font-weight: bold; font-size: 1.05rem; color: #333; margin-bottom: 8px;">页面描述预览</div>
+            <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
+              <div>
+                <div style="font-weight: 600; color:#666; margin-bottom:6px;">HTML</div>
+                <div id="ozon-desc-html-view" style="max-height: 160px; overflow: auto; border: 1px dashed #ddd; padding: 10px; border-radius: 8px; background: #fafafa;"></div>
+              </div>
+              <div>
+                <div style="font-weight: 600; color:#666; margin-bottom:6px;">JSON 富内容</div>
+                <textarea id="ozon-desc-json-view" readonly style="width:100%; height: 120px; padding:10px 12px; border:1px dashed #ddd; border-radius:8px; background:#fafafa; font-family: monospace; font-size: 12px;"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-
-    </div>
-
-    <div style="display: flex; justify-content: flex-end; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #eee;">
-      <button id="ozon-cancel-btn" style="padding: 12px 25px; background: #f0f0f0; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">取消</button>
-      <button id="ozon-submit-btn" style="padding: 12px 25px; background: linear-gradient(45deg, #1a2a6c, #2a5298); color: white; border: none; border-radius: 8px; font-size: 1rem; font-weight: bold; cursor: pointer;">确定</button>
-    </div>
-  </div>
-`;
+      <div style="display:flex; justify-content:flex-end; gap: 10px; padding: 12px 16px; border-top: 1px solid #eee;">
+        <button id="ozon-cancel-btn" style="padding: 10px 18px; background: #f0f0f0; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: bold; cursor: pointer;">取消</button>
+        <button id="ozon-submit-btn" style="padding: 10px 18px; background: linear-gradient(45deg, #1a2a6c, #2a5298); color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: bold; cursor: pointer;">确定</button>
+      </div>
+    `;
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
-            const modal = document.getElementById('ozon-attribute-modal');
-            if (modal) modal.remove();
+            const panel = document.getElementById('ozon-attribute-modal');
+            if (panel) panel.remove();
         }
     });
 
     document.body.appendChild(modal);
+
+    // 填充描述预览内容
+    try {
+        const htmlPreview = document.getElementById('ozon-desc-html-view');
+        if (htmlPreview && descHtml) {
+            htmlPreview.innerHTML = descHtml;
+        }
+        const jsonPreview = document.getElementById('ozon-desc-json-view');
+        if (jsonPreview && descJson) {
+            jsonPreview.value = descJson;
+        }
+    } catch (e) {
+        // 忽略预览填充异常
+    }
     const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase(); // 生成4位字母数字组合
     document.getElementById("offerInput").value = `${sku}-${randomSuffix}`;
 
