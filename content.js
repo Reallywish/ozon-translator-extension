@@ -297,7 +297,26 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
               </div>
               <div>
                 <div style="font-weight: 600; color:#666; margin-bottom:6px;">JSON 富内容</div>
-                <textarea id="ozon-desc-json-view" readonly style="width:100%; height: 120px; padding:10px 12px; border:1px dashed #ddd; border-radius:8px; background:#fafafa; font-family: monospace; font-size: 12px;"></textarea>
+                <div id="ozon-json-toolbar" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                  <select data-cmd="formatBlock" style="padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px;">
+                    <option value="p">段落</option>
+                    <option value="h1">H1</option>
+                    <option value="h2">H2</option>
+                    <option value="h3">H3</option>
+                  </select>
+                  <button type="button" data-cmd="bold" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-weight:700;">B</button>
+                  <button type="button" data-cmd="italic" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-style:italic;">I</button>
+                  <button type="button" data-cmd="underline" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; text-decoration:underline;">U</button>
+                  <button type="button" data-cmd="insertUnorderedList" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">• 列表</button>
+                  <button type="button" data-cmd="insertOrderedList" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">1. 列表</button>
+                  <button type="button" data-cmd="justifyLeft" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居左</button>
+                  <button type="button" data-cmd="justifyCenter" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居中</button>
+                  <button type="button" data-cmd="justifyRight" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居右</button>
+                  <button type="button" data-cmd="createLink" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">链接</button>
+                  <button type="button" data-cmd="insertImage" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">图片</button>
+                  <button type="button" data-cmd="removeFormat" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">清除格式</button>
+                </div>
+                <div id="ozon-json-rich-editor" class="ozon-rich-editor" contenteditable="true" style="width:100%; min-height:140px; padding:10px 12px; border:1px solid #ddd; border-radius:8px; background:#fff; overflow:auto;"></div>
               </div>
             </div>
           </div>
@@ -318,16 +337,73 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
 
     document.body.appendChild(modal);
 
-    // 填充描述预览内容
+    // 填充描述预览与编辑器
     try {
+        // HTML 编辑/预览切换
+        const htmlEditor = document.getElementById('ozon-desc-html-editor');
         const htmlPreview = document.getElementById('ozon-desc-html-view');
-        if (htmlPreview && descHtml) {
-            htmlPreview.innerHTML = descHtml;
+        const htmlEditBtn = document.getElementById('ozon-html-edit-btn');
+        const htmlPreviewBtn = document.getElementById('ozon-html-preview-btn');
+        if (htmlEditor) {
+            htmlEditor.value = (descHtml || '').trim();
         }
-        const jsonPreview = document.getElementById('ozon-desc-json-view');
-        if (jsonPreview && descJson) {
-            jsonPreview.value = descJson;
+        if (htmlPreview) {
+            htmlPreview.innerHTML = descHtml || '';
         }
+        if (htmlEditBtn && htmlPreviewBtn && htmlEditor && htmlPreview) {
+            htmlEditBtn.addEventListener('click', () => {
+                htmlEditor.style.display = 'block';
+                htmlPreview.style.display = 'none';
+            });
+            htmlPreviewBtn.addEventListener('click', () => {
+                htmlPreview.innerHTML = htmlEditor.value || '';
+                htmlEditor.style.display = 'none';
+                htmlPreview.style.display = 'block';
+            });
+        }
+
+        // JSON 富文本编辑器初始化 + 工具栏
+        const jsonToolbar = document.getElementById('ozon-json-toolbar');
+        const jsonRich = document.getElementById('ozon-json-rich-editor');
+        if (jsonRich) {
+            try {
+                const rich = descJson ? JSON.parse(descJson) : null;
+                const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                if (rich && Array.isArray(rich.blocks)) {
+                    jsonRich.innerHTML = rich.blocks.map(b => `<p>${escapeHtml(b.text || '')}</p>`).join('');
+                } else if (typeof rich === 'string') {
+                    jsonRich.innerHTML = rich;
+                } else if (rich && Array.isArray(rich.content)) {
+                    jsonRich.innerHTML = rich.content.map(n => typeof n === 'string' ? `<p>${escapeHtml(n)}</p>` : '').join('');
+                } else {
+                    jsonRich.innerHTML = '';
+                }
+            } catch (_) {
+                jsonRich.innerHTML = '';
+            }
+        }
+        if (jsonToolbar && jsonRich) {
+            jsonToolbar.addEventListener('click', (ev) => {
+                const btn = ev.target.closest('button[data-cmd]');
+                if (!btn) return;
+                const cmd = btn.getAttribute('data-cmd');
+                let value = null;
+                if (cmd === 'createLink' || cmd === 'insertImage') {
+                    value = prompt(cmd === 'createLink' ? '输入链接地址 (https://...)' : '输入图片地址 (https://...)');
+                    if (!value) return;
+                }
+                jsonRich.focus();
+                document.execCommand(cmd, false, value);
+            });
+            const blockSel = jsonToolbar.querySelector('select[data-cmd="formatBlock"]');
+            if (blockSel) {
+                blockSel.addEventListener('change', (e) => {
+                    jsonRich.focus();
+                    document.execCommand('formatBlock', false, e.target.value);
+                });
+            }
+        }
+
         // 渲染图片预览
         const imagePreview = document.getElementById('ozon-image-preview');
         const imageTextarea = document.querySelector('textarea[data-id="888"]');
@@ -338,9 +414,9 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
               .map(v => v.trim())
               .filter(v => v);
             imagePreview.innerHTML = urls.map(src => (
-              `<div style="position:relative; border:1px solid #eee; border-radius:8px; overflow:hidden; background:#fff;">
-                 <img src="${src}" style="width:100%; height:80px; object-fit:cover; display:block;" referrerpolicy="no-referrer" />
-                 <div title="复制链接" data-src="${src}" style="position:absolute; right:6px; top:6px; background:rgba(0,0,0,0.55); color:#fff; font-size:12px; padding:2px 6px; border-radius:6px; cursor:pointer;">复制</div>
+              `<div style=\"position:relative; border:1px solid #eee; border-radius:8px; overflow:hidden; background:#fff;\">\
+                 <img src=\"${src}\" style=\"width:100%; height:80px; object-fit:cover; display:block;\" referrerpolicy=\"no-referrer\" />\
+                 <div title=\"复制链接\" data-src=\"${src}\" style=\"position:absolute; right:6px; top:6px; background:rgba(0,0,0,0.55); color:#fff; font-size:12px; padding:2px 6px; border-radius:6px; cursor:pointer;\">复制</div>\
                </div>`
             )).join('');
             // 绑定复制
@@ -394,7 +470,6 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
 
             attributeList.appendChild(attributeItem);
         } else if (nameZh.toLowerCase().includes("json富内容")) {
-            console.log(descJson)
             attributeItem.innerHTML = `
               <div style="display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center;">
                 <div>
@@ -405,10 +480,72 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
               </div>
               <div style="color: #666; margin: 10px 0; line-height: 1.5;">${attr.description}</div>
               <div style="color: #666; margin: 10px 0; line-height: 1.5;">${attr.description_zh}</div>
-              <textarea style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem; margin-top: 10px;" 
-                     placeholder="请输入" data-id="${attr.id}">${descJson}</textarea>`;
+              <div class="ozon-editor-toolbar" data-toolbar-for="${attr.id}" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                <select data-cmd="formatBlock" style="padding:4px 6px; border:1px solid #ddd; border-radius:6px; font-size:12px;">
+                  <option value="p">段落</option>
+                  <option value="h1">H1</option>
+                  <option value="h2">H2</option>
+                  <option value="h3">H3</option>
+                </select>
+                <button type="button" data-cmd="bold" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-weight:700;">B</button>
+                <button type="button" data-cmd="italic" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; font-style:italic;">I</button>
+                <button type="button" data-cmd="underline" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer; text-decoration:underline;">U</button>
+                <button type="button" data-cmd="insertUnorderedList" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">• 列表</button>
+                <button type="button" data-cmd="insertOrderedList" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">1. 列表</button>
+                <button type="button" data-cmd="justifyLeft" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居左</button>
+                <button type="button" data-cmd="justifyCenter" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居中</button>
+                <button type="button" data-cmd="justifyRight" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">居右</button>
+                <button type="button" data-cmd="createLink" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">链接</button>
+                <button type="button" data-cmd="insertImage" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">图片</button>
+                <button type="button" data-cmd="removeFormat" style="padding:4px 8px; border:1px solid #ddd; background:#fff; border-radius:6px; cursor:pointer;">清除格式</button>
+              </div>
+              <div contenteditable="true" class="ozon-rich-editor" data-editor="rich" data-id="${attr.id}"
+                   style="width:100%; min-height:160px; padding:10px 12px; border:1px solid #ddd; border-radius:8px; margin-top:8px; background:#fff; overflow:auto;">
+                ${(() => {
+                    try {
+                        const escapeHtml = (s) => (s || '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+                        const rich = descJson ? JSON.parse(descJson) : null;
+                        if (rich && Array.isArray(rich.blocks)) {
+                            return rich.blocks.map(b => `<p>${escapeHtml(b.text || '')}</p>`).join('');
+                        }
+                        if (rich && typeof rich === 'string') {
+                            return rich;
+                        }
+                        if (rich && Array.isArray(rich.content)) {
+                            return rich.content.map(n => typeof n === 'string' ? `<p>${escapeHtml(n)}</p>` : '').join('');
+                        }
+                    } catch(e) {}
+                    return '';
+                })()}
+              </div>`;
 
             attributeList.appendChild(attributeItem);
+            // 绑定富文本工具栏事件
+            try {
+                const toolbar = attributeItem.querySelector(`[data-toolbar-for="${attr.id}"]`);
+                const editor = attributeItem.querySelector(`[data-editor="rich"][data-id="${attr.id}"]`);
+                if (toolbar && editor) {
+                    toolbar.addEventListener('click', (ev) => {
+                        const btn = ev.target.closest('button[data-cmd]');
+                        if (!btn) return;
+                        const cmd = btn.getAttribute('data-cmd');
+                        let value = null;
+                        if (cmd === 'createLink' || cmd === 'insertImage') {
+                            value = prompt(cmd === 'createLink' ? '输入链接地址 (https://...)' : '输入图片地址 (https://...)');
+                            if (!value) return;
+                        }
+                        editor.focus();
+                        document.execCommand(cmd, false, value);
+                    });
+                    const blockSel = toolbar.querySelector('select[data-cmd="formatBlock"]');
+                    if (blockSel) {
+                        blockSel.addEventListener('change', (e) => {
+                            editor.focus();
+                            document.execCommand('formatBlock', false, e.target.value);
+                        });
+                    }
+                }
+            } catch (e) {}
         } else if (attr.attributeValues) {
             attributeItem.innerHTML = `
   <div style="display: flex; justify-content: space-between; margin-bottom: 15px; align-items: center;">
@@ -537,7 +674,7 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
 
             if (attrId === "888") {
                 // 特殊处理 id 为 888 的 textarea
-                const imagesArray = value.split(',').map(v => v.trim()).filter(v => v);
+                const imagesArray = value.split(/\n|,/).map(v => v.trim()).filter(v => v);
                 results.images = imagesArray;
                 results.primary_image = imagesArray.length > 0 ? imagesArray[0] : "";
             } else {
@@ -547,6 +684,23 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
                 });
             }
         });
+
+        // 收集富文本（JSON 富内容）为 HTML 字符串写入 attributes
+        try {
+            const jsonRich = document.getElementById('ozon-json-rich-editor');
+            if (jsonRich) {
+                const htmlValue = jsonRich.innerHTML.trim();
+                if (htmlValue) {
+                    // 找到与 “JSON 富内容” 对应的 attr.id（上面渲染时使用的 data-id）
+                    const jsonAttrBlock = Array.from(document.querySelectorAll('.ozon-rich-editor[data-editor="rich"]')).find(el => {
+                        const block = el.closest('div');
+                        return !!block && block.previousElementSibling && block.previousElementSibling.textContent?.includes('JSON 富内容');
+                    });
+                    // 后备策略：直接将内容追加到 attributes，需服务端按对应属性解析
+                    results.attributes.push({ id: 0, values: [{ value: htmlValue }] });
+                }
+            }
+        } catch (_) {}
 
         // 收集 input 值 -> 直接放到最外层
         const inputs = modal.querySelectorAll('input');
