@@ -287,12 +287,7 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
     </div>
     `;
 
-    document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-            const modal = document.getElementById('ozon-attribute-modal');
-            if (modal) modal.remove();
-        }
-    });
+    // 移除 ESC 关闭逻辑，防止误关窗口
 
     document.body.appendChild(modal);
     
