@@ -377,6 +377,36 @@ function showAttributesModal(data, characteristics, imageUrls, descJson, descHtm
             }
         });
 
+        // 拖拽排序
+        let draggedIndex = null;
+        thumbsContainer.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('[data-index]');
+            if (!item) return;
+            draggedIndex = Number(item.getAttribute('data-index'));
+            if (e.dataTransfer) {
+                e.dataTransfer.effectAllowed = 'move';
+                try { e.dataTransfer.setData('text/plain', String(draggedIndex)); } catch (_) {}
+            }
+        });
+        thumbsContainer.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        });
+        thumbsContainer.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const target = e.target.closest('[data-index]');
+            if (!target) return;
+            const targetIndex = Number(target.getAttribute('data-index'));
+            if (draggedIndex === null || targetIndex === draggedIndex) return;
+            const urls = parseUrls(imageTextarea.value);
+            if (draggedIndex < 0 || draggedIndex >= urls.length || targetIndex < 0 || targetIndex >= urls.length) return;
+            const [moved] = urls.splice(draggedIndex, 1);
+            urls.splice(targetIndex, 0, moved);
+            writeUrls(urls);
+            draggedIndex = null;
+            render();
+        });
+
         imageTextarea.addEventListener('input', render);
         render();
     })();

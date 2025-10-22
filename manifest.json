@@ -35,5 +35,17 @@
   ],
   "action": {
     "default_popup": "popup.html"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "leimu_data.conf",
+        "leimu_data_zh.conf"
+      ],
+      "matches": [
+        "https://www.ozon.ru/*",
+        "https://www.wildberries.ru/*"
+      ]
+    }
+  ]
 }
