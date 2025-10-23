@@ -274,6 +274,10 @@ async function openUploadModal(imageUrls) {
         <div style="background: rgba(255,255,255,0.8); border-radius:12px; padding:20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); backdrop-filter: blur(10px);">
           <div style="font-weight:bold; font-size: 1.1rem; color: #333; margin-bottom: 12px;">⚙️ 商品属性</div>
           <div id="wb-attrs-container" style="margin-top:12px; display:grid; grid-template-columns: 1fr; gap:16px;"></div>
+          <div style="margin-top:16px; display:flex; gap:12px;">
+            <button id="wb-manual-json-btn" style="padding:12px 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 600; transition: all 0.3s;">🎨 手动生成JSON</button>
+            <button id="wb-debug-btn" style="padding:12px 20px; background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight: 600; transition: all 0.3s;">🔍 调试页面</button>
+          </div>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:12px; margin-top: 20px;">
@@ -315,6 +319,19 @@ async function openUploadModal(imageUrls) {
     })();
 
     modal.querySelector('#wb-close-modal').addEventListener('click', () => modal.remove());
+    
+    // 手动生成JSON按钮
+    modal.querySelector('#wb-manual-json-btn').addEventListener('click', () => {
+        const imageTextarea = modal.querySelector('#wb-image-textarea');
+        const imageUrls = imageTextarea ? imageTextarea.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+        console.log('手动触发生成JSON，图片URLs:', imageUrls);
+        generateRichContentJson(imageUrls);
+    });
+    
+    // 调试页面按钮
+    modal.querySelector('#wb-debug-btn').addEventListener('click', () => {
+        debugPageElements();
+    });
 
     // 渲染图片预览
     const imageTextarea = modal.querySelector('#wb-image-textarea');
@@ -414,11 +431,9 @@ async function openUploadModal(imageUrls) {
                 alert('复制失败，请手动复制');
             }
         } else if (action === 'delete') {
-            if (confirm('确定要删除这张图片吗？')) {
-                const next = urls.filter(u => u !== url);
-                writeUrls(next);
-                renderThumbs();
-            }
+            const next = urls.filter(u => u !== url);
+            writeUrls(next);
+            renderThumbs();
         }
     });
 
@@ -721,6 +736,14 @@ async function openUploadModal(imageUrls) {
             if (typeIdInput) typeIdInput.value = third.type_id || '';
             if (descCategoryIdInput) descCategoryIdInput.value = second.description_category_id || '';
             
+            // 从弹窗的图片文本框中获取图片URLs
+            const imageTextarea = modal.querySelector('#wb-image-textarea');
+            const imageUrls = imageTextarea ? imageTextarea.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+            console.log('从弹窗获取的图片URLs:', imageUrls);
+            
+            // 生成Rich-контент JSON
+            generateRichContentJson(imageUrls);
+            
         } catch (error) {
             console.error('获取属性时出错:', error);
             alert('获取属性时发生错误，请重试');
@@ -877,6 +900,449 @@ async function openUploadModal(imageUrls) {
     });
 }
 
+// 生成Rich-контент JSON格式
+function generateRichContentJson(imageUrls) {
+    console.log('开始生成Rich-контент JSON...');
+    console.log('图片URLs:', imageUrls);
+    
+    // 初始化空的JSON结构
+    const richContentJson = {
+        content: [],
+        version: 0.3
+    };
+    
+    // 尝试多次查找属性框
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    function tryFindAndFill() {
+        attempts++;
+        console.log(`第${attempts}次尝试查找属性框...`);
+        
+        const result = findRichContentAttribute();
+        if (result && result.textarea) {
+            console.log('找到属性框，开始填入JSON...');
+            result.textarea.value = JSON.stringify(richContentJson, null, 2);
+            console.log('已将JSON填入ID为11254的属性框');
+            
+            // 为这个属性框添加图片管理功能
+            addRichContentManagement(result.element, imageUrls, richContentJson);
+            return true;
+        } else if (attempts < maxAttempts) {
+            console.log(`第${attempts}次未找到，${attempts * 1000}ms后重试...`);
+            setTimeout(tryFindAndFill, attempts * 1000);
+        } else {
+            console.log('所有尝试都失败了，未找到ID为11254的Rich-контент JSON属性框');
+            // 显示提示信息
+            alert('未找到Rich-контент JSON属性框，请确保已选择完整的商品类目并获取了属性');
+        }
+        return false;
+    }
+    
+    // 开始尝试
+    tryFindAndFill();
+    
+    console.log('初始化的Rich-контент JSON:', richContentJson);
+}
+
+// 查找Rich-контент JSON属性框
+function findRichContentAttribute() {
+    console.log('开始查找Rich-контент JSON属性框...');
+    
+    // 方法1: 直接在属性容器中查找
+    const attrsContainer = document.querySelector('#wb-attrs-container');
+    if (attrsContainer) {
+        console.log('找到属性容器，检查其子元素...');
+        const textareas = attrsContainer.querySelectorAll('textarea');
+        console.log('属性容器中的textarea数量:', textareas.length);
+        
+        for (const textarea of textareas) {
+            let parent = textarea.parentElement;
+            while (parent && parent !== attrsContainer) {
+                const text = parent.textContent || '';
+                if (text.includes('Rich-контент JSON') || text.includes('JSON富内容') || text.includes('11254')) {
+                    console.log('在属性容器中找到目标属性框:', parent, textarea);
+                    return { element: parent, textarea };
+                }
+                parent = parent.parentElement;
+            }
+        }
+    }
+    
+    // 方法2: 查找包含特定文本的元素
+    const allElements = document.querySelectorAll('*');
+    console.log('页面总元素数量:', allElements.length);
+    
+    for (const element of allElements) {
+        const text = element.textContent || '';
+        if ((text.includes('Rich-контент JSON') || text.includes('JSON富内容')) && text.includes('11254')) {
+            console.log('找到包含目标文本的元素:', element);
+            console.log('元素文本内容:', text.substring(0, 200));
+            
+            // 查找textarea
+            let textarea = element.querySelector('textarea');
+            if (!textarea) {
+                // 如果在当前元素中没找到textarea，向上查找
+                let parent = element.parentElement;
+                while (parent && !textarea) {
+                    textarea = parent.querySelector('textarea');
+                    parent = parent.parentElement;
+                }
+            }
+            
+            if (textarea) {
+                console.log('找到Rich-контент JSON属性框和textarea:', element, textarea);
+                return { element, textarea };
+            }
+        }
+    }
+    
+    // 方法3: 直接查找所有textarea，然后检查其父级
+    console.log('方法2未找到，尝试方法3...');
+    const allTextareas = document.querySelectorAll('textarea');
+    console.log('页面总textarea数量:', allTextareas.length);
+    
+    for (const textarea of allTextareas) {
+        let parent = textarea.parentElement;
+        while (parent) {
+            const text = parent.textContent || '';
+            if ((text.includes('Rich-контент JSON') || text.includes('JSON富内容')) && text.includes('11254')) {
+                console.log('方法3找到属性框:', parent, textarea);
+                return { element: parent, textarea };
+            }
+            parent = parent.parentElement;
+        }
+    }
+    
+    console.log('所有方法都未找到Rich-контент JSON属性框');
+    return null;
+}
+
+// 为Rich-контент属性框添加图片管理功能
+function addRichContentManagement(attrElement, imageUrls, jsonData) {
+    console.log('开始添加图片管理功能...');
+    console.log('属性元素:', attrElement);
+    console.log('图片URLs:', imageUrls);
+    
+    let textarea;
+    if (attrElement.textarea) {
+        textarea = attrElement.textarea;
+    } else {
+        textarea = attrElement.querySelector('textarea');
+    }
+    
+    if (!textarea) {
+        console.log('未找到textarea元素');
+        return;
+    }
+    
+    console.log('找到textarea:', textarea);
+    
+    // 检查是否已经添加过管理区域
+    const existingManagement = document.getElementById('wb-rich-content-management');
+    if (existingManagement) {
+        console.log('管理区域已存在，先移除');
+        existingManagement.remove();
+    }
+    
+    // 创建图片管理区域
+    const managementDiv = document.createElement('div');
+    managementDiv.style.cssText = `
+        margin-top: 16px; padding: 16px; border: 2px solid #e1e5e9; border-radius: 8px; 
+        background: #f8f9fa; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
+        gap: 12px; max-height: 300px; overflow-y: auto;
+    `;
+    managementDiv.id = 'wb-rich-content-management';
+    
+    console.log('创建管理区域:', managementDiv);
+    
+    // 渲染图片管理界面
+    renderRichContentManagement(managementDiv, imageUrls, jsonData, textarea);
+    
+    // 将管理区域插入到textarea后面
+    if (textarea.parentNode) {
+        textarea.parentNode.insertBefore(managementDiv, textarea.nextSibling);
+        console.log('管理区域已插入到textarea后面');
+    } else {
+        console.log('textarea没有父节点');
+    }
+}
+
+// 渲染Rich-контент图片管理界面
+function renderRichContentManagement(container, imageUrls, jsonData, textarea) {
+    console.log('开始渲染图片管理界面...');
+    console.log('容器:', container);
+    console.log('图片URLs:', imageUrls);
+    console.log('JSON数据:', jsonData);
+    console.log('文本框:', textarea);
+    
+    container.innerHTML = '';
+    
+    // 显示已添加到JSON中的图片
+    if (jsonData && jsonData.content) {
+        console.log('JSON中有', jsonData.content.length, '个图片项');
+        jsonData.content.forEach((item, index) => {
+            if (item.blocks && item.blocks.length > 0) {
+                const block = item.blocks[0];
+                if (block.img && block.img.src) {
+                    console.log('渲染JSON中的图片:', block.img.src);
+                    const previewItem = document.createElement('div');
+                    previewItem.style.cssText = `
+                        border: 2px solid #e1e5e9; border-radius: 8px; padding: 8px; background: #fff; 
+                        display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                        position: relative; cursor: move;
+                    `;
+                    previewItem.draggable = true;
+                    previewItem.dataset.index = index;
+                    previewItem.dataset.type = 'json-item';
+                    
+                    previewItem.innerHTML = `
+                        <div style="width: 100%; aspect-ratio: 1/1; overflow: hidden; border-radius: 6px; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                            <img src="${block.img.src}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                            <div style="display: none; flex-direction: column; align-items: center; justify-content: center; color: #999; font-size: 10px;">
+                                <div>❌</div>
+                                <div>加载失败</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 4px;">
+                            <button data-action="delete" style="flex: 1; padding: 4px 8px; border: 1px solid #ff6b6b; background: #ff6b6b; color: #fff; border-radius: 4px; cursor: pointer; font-size: 10px;">🗑️</button>
+                        </div>
+                    `;
+                    
+                    container.appendChild(previewItem);
+                }
+            }
+        });
+    }
+    
+    // 显示可用的图片（未添加到JSON中的）
+    if (imageUrls && imageUrls.length > 0) {
+        console.log('渲染', imageUrls.length, '个可用图片');
+        imageUrls.forEach((url, index) => {
+            if (!url) return;
+            
+            // 检查这个URL是否已经在JSON中
+            const isInJson = jsonData && jsonData.content && jsonData.content.some(item => 
+                item.blocks && item.blocks[0] && item.blocks[0].img && item.blocks[0].img.src === url
+            );
+            
+            if (!isInJson) {
+                console.log('渲染可用图片:', url);
+                const previewItem = document.createElement('div');
+                previewItem.style.cssText = `
+                    border: 2px solid #e1e5e9; border-radius: 8px; padding: 8px; background: #fff; 
+                    display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    position: relative; opacity: 0.6;
+                `;
+                previewItem.dataset.url = url;
+                previewItem.dataset.type = 'available-item';
+                
+                previewItem.innerHTML = `
+                    <div style="width: 100%; aspect-ratio: 1/1; overflow: hidden; border-radius: 6px; background: #f8f9fa; display: flex; align-items: center; justify-content: center;">
+                        <img src="${url}" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';"/>
+                        <div style="display: none; flex-direction: column; align-items: center; justify-content: center; color: #999; font-size: 10px;">
+                            <div>❌</div>
+                            <div>加载失败</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 4px;">
+                        <button data-action="add" style="flex: 1; padding: 4px 8px; border: 1px solid #4CAF50; background: #4CAF50; color: #fff; border-radius: 4px; cursor: pointer; font-size: 10px;">➕ 添加</button>
+                    </div>
+                `;
+                
+                container.appendChild(previewItem);
+            }
+        });
+    }
+    
+    console.log('图片管理界面渲染完成，容器子元素数量:', container.children.length);
+    
+    // 添加事件处理
+    setupRichContentManagementEvents(container, textarea);
+}
+
+// 设置Rich-контент管理事件
+function setupRichContentManagementEvents(container, textarea) {
+    // 移除之前的事件监听器
+    container.removeEventListener('click', handleRichContentManagementClick);
+    container.removeEventListener('dragstart', handleRichContentDragStart);
+    container.removeEventListener('dragover', handleRichContentDragOver);
+    container.removeEventListener('drop', handleRichContentDrop);
+    container.removeEventListener('dragend', handleRichContentDragEnd);
+    
+    // 添加新的事件监听器
+    container.addEventListener('click', handleRichContentManagementClick);
+    container.addEventListener('dragstart', handleRichContentDragStart);
+    container.addEventListener('dragover', handleRichContentDragOver);
+    container.addEventListener('drop', handleRichContentDrop);
+    container.addEventListener('dragend', handleRichContentDragEnd);
+    
+    let draggedIndex = null;
+    
+    function handleRichContentManagementClick(e) {
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        
+        const action = target.getAttribute('data-action');
+        const item = target.closest('[data-index], [data-type]');
+        if (!action || !item) return;
+        
+        try {
+            const jsonData = JSON.parse(textarea.value);
+            if (!jsonData || !jsonData.content) return;
+            
+            if (action === 'add') {
+                // 添加图片到JSON
+                const imageUrl = item.getAttribute('data-url');
+                if (imageUrl) {
+                    // 检查是否已经存在相同的图片
+                    const exists = jsonData.content.some(existingItem => 
+                        existingItem.blocks && existingItem.blocks[0] && 
+                        existingItem.blocks[0].img && existingItem.blocks[0].img.src === imageUrl
+                    );
+                    
+                    if (!exists) {
+                        const newItem = {
+                            widgetName: "raShowcase",
+                            type: "roll",
+                            blocks: [{
+                                imgLink: "",
+                                img: {
+                                    src: imageUrl,
+                                    srcMobile: imageUrl,
+                                    alt: "",
+                                    position: "width_full",
+                                    positionMobile: "width_full",
+                                    deleted: false
+                                }
+                            }]
+                        };
+                        jsonData.content.push(newItem);
+                        
+                        // 更新textarea和预览
+                        updateRichContentTextareaAndPreview(textarea, container, jsonData);
+                    }
+                }
+            } else if (action === 'delete') {
+                // 标记删除
+                const index = Number(item.getAttribute('data-index'));
+                if (index >= 0 && index < jsonData.content.length) {
+                    const imgBlock = jsonData.content[index].blocks[0];
+                    if (imgBlock && imgBlock.img && !imgBlock.img.deleted) {
+                        imgBlock.img.deleted = true;
+                        
+                        // 给缩略图添加删除标记样式
+                        item.style.opacity = '0.3';
+                        item.style.border = '2px solid #ff6b6b';
+                        item.style.background = '#ffe6e6';
+                        
+                        const deleteBtn = item.querySelector('[data-action="delete"]');
+                        if (deleteBtn) {
+                            deleteBtn.textContent = '↩️ 恢复';
+                            deleteBtn.style.background = '#4CAF50';
+                            deleteBtn.setAttribute('data-action', 'restore');
+                        }
+                        
+                        // 更新textarea和预览
+                        updateRichContentTextareaAndPreview(textarea, container, jsonData);
+                    }
+                }
+            } else if (action === 'restore') {
+                // 恢复已删除的图片
+                const index = Number(item.getAttribute('data-index'));
+                if (index >= 0 && index < jsonData.content.length) {
+                    const imgBlock = jsonData.content[index].blocks[0];
+                    if (imgBlock && imgBlock.img) {
+                        imgBlock.img.deleted = false;
+                        
+                        // 恢复缩略图样式
+                        item.style.opacity = '1';
+                        item.style.border = '2px solid #e1e5e9';
+                        item.style.background = '#fff';
+                        
+                        const restoreBtn = item.querySelector('[data-action="restore"]');
+                        if (restoreBtn) {
+                            restoreBtn.textContent = '🗑️';
+                            restoreBtn.style.background = '#ff6b6b';
+                            restoreBtn.setAttribute('data-action', 'delete');
+                        }
+                        
+                        // 更新textarea和预览
+                        updateRichContentTextareaAndPreview(textarea, container, jsonData);
+                    }
+                }
+            }
+            
+        } catch (error) {
+            console.error('处理JSON失败:', error);
+        }
+    }
+    
+    function handleRichContentDragStart(e) {
+        const item = e.target.closest('[data-index]');
+        if (!item || item.getAttribute('data-type') !== 'json-item') return;
+        draggedIndex = Number(item.getAttribute('data-index'));
+        item.style.opacity = '0.5';
+    }
+    
+    function handleRichContentDragOver(e) {
+        e.preventDefault();
+    }
+    
+    function handleRichContentDrop(e) {
+        e.preventDefault();
+        const target = e.target.closest('[data-index]');
+        if (!target || target.getAttribute('data-type') !== 'json-item' || draggedIndex === null) return;
+        
+        const targetIndex = Number(target.getAttribute('data-index'));
+        if (draggedIndex === targetIndex) return;
+        
+        try {
+            const jsonData = JSON.parse(textarea.value);
+            if (jsonData && jsonData.content) {
+                // 移动数组元素
+                const movedItem = jsonData.content.splice(draggedIndex, 1)[0];
+                jsonData.content.splice(targetIndex, 0, movedItem);
+                
+                // 更新textarea和预览
+                updateRichContentTextareaAndPreview(textarea, container, jsonData);
+            }
+        } catch (error) {
+            console.error('解析JSON失败:', error);
+        }
+        
+        draggedIndex = null;
+    }
+    
+    function handleRichContentDragEnd(e) {
+        const item = e.target.closest('[data-index]');
+        if (item) item.style.opacity = '1';
+        draggedIndex = null;
+    }
+}
+
+// 更新Rich-контент textarea和预览
+function updateRichContentTextareaAndPreview(textarea, container, jsonData) {
+    // 更新textarea（过滤掉已删除的项目）
+    const filteredContent = jsonData.content.filter(item => 
+        item.blocks && item.blocks[0] && item.blocks[0].img && !item.blocks[0].img.deleted
+    );
+    const filteredJsonData = {
+        ...jsonData,
+        content: filteredContent
+    };
+    textarea.value = JSON.stringify(filteredJsonData, null, 2);
+    
+    // 重新渲染预览
+    const imageTextarea = document.querySelector('#wb-image-textarea');
+    const availableUrls = imageTextarea ? imageTextarea.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+    renderRichContentManagement(container, availableUrls, jsonData, textarea);
+}
+
+// 这个函数已经被移除，现在直接在属性框中操作
+
+// 这些函数已经被移除，现在直接在属性框中操作
+
 async function downloadM3U8Video(m3u8Url) {
     const baseUrl = m3u8Url.substring(0, m3u8Url.lastIndexOf("/") + 1);
 
@@ -920,6 +1386,81 @@ async function downloadM3U8Video(m3u8Url) {
     URL.revokeObjectURL(a.href);
 
     console.log("下载完成，文件名：video.ts");
+}
+
+// 调试页面元素
+function debugPageElements() {
+    console.log('=== 开始调试页面元素 ===');
+    
+    // 1. 检查所有textarea
+    const allTextareas = document.querySelectorAll('textarea');
+    console.log('页面中所有textarea数量:', allTextareas.length);
+    allTextareas.forEach((textarea, index) => {
+        console.log(`textarea ${index}:`, textarea);
+        console.log(`  - 父元素:`, textarea.parentElement);
+        console.log(`  - 父元素的文本内容:`, textarea.parentElement?.textContent?.substring(0, 100));
+    });
+    
+    // 2. 查找包含特定文本的元素
+    const allElements = document.querySelectorAll('*');
+    const richContentElements = [];
+    const id11254Elements = [];
+    
+    allElements.forEach(element => {
+        const text = element.textContent || '';
+        if (text.includes('Rich-контент JSON') || text.includes('JSON富内容')) {
+            richContentElements.push(element);
+        }
+        if (text.includes('11254')) {
+            id11254Elements.push(element);
+        }
+    });
+    
+    console.log('包含"Rich-контент JSON"或"JSON富内容"的元素数量:', richContentElements.length);
+    richContentElements.forEach((element, index) => {
+        console.log(`Rich-контент元素 ${index}:`, element);
+        console.log(`  - 文本内容:`, element.textContent?.substring(0, 200));
+        console.log(`  - 是否有textarea:`, !!element.querySelector('textarea'));
+    });
+    
+    console.log('包含"11254"的元素数量:', id11254Elements.length);
+    id11254Elements.forEach((element, index) => {
+        console.log(`ID 11254元素 ${index}:`, element);
+        console.log(`  - 文本内容:`, element.textContent?.substring(0, 200));
+        console.log(`  - 是否有textarea:`, !!element.querySelector('textarea'));
+    });
+    
+    // 3. 检查属性容器
+    const attrsContainer = document.querySelector('#wb-attrs-container');
+    console.log('属性容器:', attrsContainer);
+    if (attrsContainer) {
+        console.log('属性容器子元素数量:', attrsContainer.children.length);
+        Array.from(attrsContainer.children).forEach((child, index) => {
+            console.log(`属性容器子元素 ${index}:`, child);
+        });
+    }
+    
+    // 4. 尝试直接查找可能的属性框
+    const possibleSelectors = [
+        '[data-attribute-id="11254"]',
+        '[data-id="11254"]',
+        'input[value*="11254"]',
+        'textarea[data-attribute-id*="11254"]',
+        'textarea[data-id*="11254"]'
+    ];
+    
+    possibleSelectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        console.log(`选择器 "${selector}" 找到的元素数量:`, elements.length);
+        elements.forEach((element, index) => {
+            console.log(`  - 元素 ${index}:`, element);
+        });
+    });
+    
+    console.log('=== 调试完成 ===');
+    
+    // 显示调试结果
+    alert(`调试完成！\n找到 ${allTextareas.length} 个textarea\n找到 ${richContentElements.length} 个Rich-контент相关元素\n找到 ${id11254Elements.length} 个包含11254的元素\n\n请查看控制台获取详细信息`);
 }
 
 
