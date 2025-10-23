@@ -90,42 +90,54 @@ function addcommButton() {
             const webDescRaw = jsonData.widgetStates['webDescription-2983286-pdpPage2column-2'] || '';
 
             if (webDescRaw) {
-                const normalizedDesc = webDescRaw.replace(/\\"/g, '"').replace(/^"|"$/g, '');
-                const descData = JSON.parse(normalizedDesc);
-                if (descData.richAnnotationType === "JSON") {
-                    descJson = JSON.stringify(descData.richAnnotationJson) || ' ';
-                } else if (descData.richAnnotationType === "HTML") {
-                    descHtml = descData.richAnnotation
-                        .replace(/\\n/g, '\n')                      // 转义换行符变实际换行
-                        .replace(/<br\s*\/?>/gi, '\n')              // 统一替换各种 <br> 标签为换行
-                        .replace(/\n{2,}/g, '\n')                   // 多个换行替换为一个
-                        .trim() || ' ';
+                try {
+                    const normalizedDesc = webDescRaw.replace(/\\"/g, '"').replace(/^"|"$/g, '');
+                    const descData = JSON.parse(normalizedDesc);
+                    if (descData.richAnnotationType === "JSON") {
+                        descJson = JSON.stringify(descData.richAnnotationJson) || ' ';
+                    } else if (descData.richAnnotationType === "HTML") {
+                        descHtml = descData.richAnnotation
+                            .replace(/\\n/g, '\n')                      // 转义换行符变实际换行
+                            .replace(/<br\s*\/?>/gi, '\n')              // 统一替换各种 <br> 标签为换行
+                            .replace(/\n{2,}/g, '\n')                   // 多个换行替换为一个
+                            .trim() || ' ';
+                    }
+                } catch (e) {
+                    console.warn('描述解析失败:', e);
                 }
             }
 
             const keyword = jsonData.widgetStates['tagList-3460535-pdpPage2column-2'] || '';
             if (keyword) {
-                const keywordDesc = keyword.replace(/\\"/g, '"').replace(/^"|"$/g, '');
-                const keywordJson = JSON.parse(keywordDesc);
-                keywordRes = keywordJson.items.map(item => item.name).join(';');
+                try {
+                    const keywordDesc = keyword.replace(/\\"/g, '"').replace(/^"|"$/g, '');
+                    const keywordJson = JSON.parse(keywordDesc);
+                    keywordRes = keywordJson.items.map(item => item.name).join(';');
+                } catch (e) {
+                    console.warn('关键词解析失败:', e);
+                }
             }
 
             // 特性部分
             const webCharsRaw = jsonData.widgetStates['webCharacteristics-3282540-pdpPage2column-2'] || '';
             if (webCharsRaw) {
-                const charsData = JSON.parse(webCharsRaw);
-                if (charsData.characteristics && Array.isArray(charsData.characteristics)) {
-                    charsData.characteristics.forEach(charGroup => {
-                        [...(charGroup.short || []), ...(charGroup.long || [])].forEach(item => {
-                            if (item.name && item.values) {
-                                const values = item.values
-                                    .filter(v => v.text)
-                                    .map(v => v.text)
-                                    .join(', ');
-                                if (values) characteristics[item.name.trim()] = values.trim();
-                            }
+                try {
+                    const charsData = JSON.parse(webCharsRaw);
+                    if (charsData.characteristics && Array.isArray(charsData.characteristics)) {
+                        charsData.characteristics.forEach(charGroup => {
+                            [...(charGroup.short || []), ...(charGroup.long || [])].forEach(item => {
+                                if (item.name && item.values) {
+                                    const values = item.values
+                                        .filter(v => v.text)
+                                        .map(v => v.text)
+                                        .join(', ');
+                                    if (values) characteristics[item.name.trim()] = values.trim();
+                                }
+                            });
                         });
-                    });
+                    }
+                } catch (e) {
+                    console.warn('特性解析失败:', e);
                 }
             }
         } catch (e) {

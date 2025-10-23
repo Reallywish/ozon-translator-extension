@@ -30,8 +30,21 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             const url = chrome.runtime.getURL('leimu_data.conf');
             const resp = await fetch(url);
             const text = await resp.text();
-            leimuDataCache = JSON.parse(text);
-            return leimuDataCache;
+            
+            // 检查文件内容是否为空或无效
+            if (!text || text.trim() === '') {
+                throw new Error('文件内容为空');
+            }
+            
+            // 尝试解析JSON
+            try {
+                leimuDataCache = JSON.parse(text);
+                return leimuDataCache;
+            } catch (parseError) {
+                console.error('JSON解析失败:', parseError);
+                console.error('文件内容前100个字符:', text.substring(0, 100));
+                throw new Error(`JSON解析失败: ${parseError.message}`);
+            }
         }
 
         async function findCategoryId(targetTypeName) {
@@ -308,6 +321,82 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
         // 调用直接获取属性的API
         get_attribute_direct(type_id, description_category_id, clientId, apiKey)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({error}));
+
+        return true; // 表示异步响应
+    } else if (request.action === 'upload_product') {
+        const {productData, clientId, apiKey} = request;
+        
+        async function uploadProduct(productData, clientId, apiKey) {
+            try {
+                console.log('开始上传商品:', productData);
+                
+                const response = await fetch("https://api-seller.ozon.ru/v3/product/import", {
+                    method: "POST",
+                    headers: {
+                        "Client-Id": clientId,
+                        "Api-Key": apiKey,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify(productData)
+                });
+
+                const result = await response.json();
+                console.log('商品上传API响应:', result);
+                
+                if (!response.ok) {
+                    return { error: `上传失败: ${result.message || '未知错误'}` };
+                }
+                
+                return { result: result };
+            } catch (error) {
+                console.error("商品上传API请求失败:", error);
+                return { error: error.message };
+            }
+        }
+
+        // 调用上传商品API
+        uploadProduct(productData, clientId, apiKey)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({error}));
+
+        return true; // 表示异步响应
+    } else if (request.action === 'query_product_status') {
+        const {taskId, clientId, apiKey} = request;
+        
+        async function queryProductStatus(taskId, clientId, apiKey) {
+            try {
+                console.log('开始查询商品状态:', taskId);
+                
+                const response = await fetch("https://api-seller.ozon.ru/v1/product/import/info", {
+                    method: "POST",
+                    headers: {
+                        "Client-Id": clientId,
+                        "Api-Key": apiKey,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        task_id: taskId
+                    })
+                });
+
+                const result = await response.json();
+                console.log('商品状态查询API响应:', result);
+                
+                if (!response.ok) {
+                    return { error: `查询失败: ${result.message || '未知错误'}` };
+                }
+                
+                return { result: result };
+            } catch (error) {
+                console.error("商品状态查询API请求失败:", error);
+                return { error: error.message };
+            }
+        }
+
+        // 调用查询商品状态API
+        queryProductStatus(taskId, clientId, apiKey)
             .then(result => sendResponse(result))
             .catch(error => sendResponse({error}));
 

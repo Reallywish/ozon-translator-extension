@@ -442,9 +442,22 @@ async function openUploadModal(imageUrls) {
             
             const text = await resp.text();
             console.log('文件内容长度:', text.length);
-            leimuDataCache = JSON.parse(text);
-            console.log('leimu_data_zh.conf 加载成功:', leimuDataCache);
-            return leimuDataCache;
+            
+            // 检查文件内容是否为空或无效
+            if (!text || text.trim() === '') {
+                throw new Error('文件内容为空');
+            }
+            
+            // 尝试解析JSON
+            try {
+                leimuDataCache = JSON.parse(text);
+                console.log('leimu_data_zh.conf 加载成功:', leimuDataCache);
+                return leimuDataCache;
+            } catch (parseError) {
+                console.error('JSON解析失败:', parseError);
+                console.error('文件内容前100个字符:', text.substring(0, 100));
+                throw new Error(`JSON解析失败: ${parseError.message}`);
+            }
         } catch (error) {
             console.error('加载 leimu_data_zh.conf 失败:', error);
             console.error('错误详情:', error.message);
@@ -724,13 +737,24 @@ async function openUploadModal(imageUrls) {
         }
     });
 
-    // 收集并占位上传（上传逻辑保持不变：此处仅收集结果并打印）
-    modal.querySelector('#wb-upload-confirm').addEventListener('click', () => {
+    // 收集并上传商品
+    modal.querySelector('#wb-upload-confirm').addEventListener('click', async () => {
         const clientId = modal.querySelector('#wb-client-id').value.trim();
         const apiKey = modal.querySelector('#wb-api-key').value.trim();
         const images = parseUrls(imageTextarea.value);
         const type_id = modal.dataset.typeId || '';
         const description_category_id = modal.dataset.descriptionCategoryId || '';
+
+        // 验证必要字段
+        if (!clientId || !apiKey) {
+            alert('请填写 Client ID 和 API Key');
+            return;
+        }
+
+        if (!type_id || !description_category_id) {
+            alert('请先选择完整的商品类目');
+            return;
+        }
 
         // 构建完整的商品数据结构
         const results = {
@@ -785,17 +809,71 @@ async function openUploadModal(imageUrls) {
             }
         });
 
-        console.log('准备上传的商品数据:', results);
+        // 将商品数据包装为items数组格式
+        const uploadData = {
+            items: [results]
+        };
         
-        // 复制到剪贴板
-        navigator.clipboard.writeText(JSON.stringify(results, null, 2))
-            .then(() => {
-                alert('商品数据已收集并复制到剪贴板！');
-            })
-            .catch(err => {
-                console.error("复制失败:", err);
-                alert('商品数据已收集并打印到控制台');
-            });
+        console.log('准备上传的商品数据:', uploadData);
+        
+        // 显示上传进度
+        const uploadBtn = modal.querySelector('#wb-upload-confirm');
+        const originalText = uploadBtn.textContent;
+        uploadBtn.textContent = '⏳ 上传中...';
+        uploadBtn.disabled = true;
+        uploadBtn.style.opacity = '0.7';
+
+        try {
+            // 发送上传请求
+            const uploadResponse = await new Promise(resolve => chrome.runtime.sendMessage({
+                action: 'upload_product',
+                productData: uploadData,
+                clientId,
+                apiKey
+            }, resolve));
+
+            console.log('商品上传请求结果:', uploadResponse);
+            
+            if (uploadResponse && uploadResponse.error) {
+                alert(`商品上传失败: ${uploadResponse.error}`);
+                return;
+            }
+
+            if (uploadResponse && uploadResponse.result && uploadResponse.result.result && uploadResponse.result.result.task_id) {
+                const taskId = uploadResponse.result.result.task_id;
+                alert(`商品上传成功！\nTask ID: ${taskId}`);
+                
+                // 上传成功后，发起商品查询状态请求
+                console.log('开始查询商品状态...');
+                const queryResponse = await new Promise(resolve => chrome.runtime.sendMessage({
+                    action: 'query_product_status',
+                    taskId: String(taskId), // 转换为字符串格式
+                    clientId,
+                    apiKey
+                }, resolve));
+
+                console.log('商品查询状态请求结果:', queryResponse);
+                
+                if (queryResponse && queryResponse.error) {
+                    alert(`商品状态查询失败: ${queryResponse.error}`);
+                } else if (queryResponse && queryResponse.result) {
+                    alert(`商品状态查询成功！\n状态: ${JSON.stringify(queryResponse.result, null, 2)}`);
+                } else {
+                    alert('商品状态查询失败：未收到有效响应');
+                }
+            } else {
+                alert('商品上传失败：未收到有效响应');
+            }
+
+        } catch (error) {
+            console.error('上传商品时出错:', error);
+            alert(`上传商品时发生错误: ${error.message}`);
+        } finally {
+            // 恢复按钮状态
+            uploadBtn.textContent = originalText;
+            uploadBtn.disabled = false;
+            uploadBtn.style.opacity = '1';
+        }
     });
 }
 
